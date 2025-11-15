@@ -1,6 +1,7 @@
 # How to create your own config
 
 You can bring your own config to CRISP, so that you are able to create your own environments, teleoperation setup, controllers...
+
 1. First create a config folder and give it the following structure (you do not need to add all config folders):
 
 ```bash
@@ -30,10 +31,10 @@ export CRISP_CONFIG_PATH=/path/to/my_crisp_configs
 3. Check that the config works.
 
 ```bash
-pixi run python scripts/check_config.py
+crisp-check-config  # Do this inside an environment with crisp_py or crisp_gym installed
 ```
 
-This should output your config if it can loaded properly
+This should output your config if it can be loaded properly
 
 ---
 
