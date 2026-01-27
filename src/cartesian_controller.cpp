@@ -93,11 +93,10 @@ CartesianController::update(const rclcpp::Time & time, const rclcpp::Duration & 
   pinocchio::forwardKinematics(model_, data_, q_pin, dq);
   pinocchio::updateFramePlacements(model_, data_);
 
-  pinocchio::SE3 new_target_pose =
-    pinocchio::SE3(target_orientation_.toRotationMatrix(), target_position_);
-
-  target_pose_ = pinocchio::exp6(exponential_moving_average(
-    pinocchio::log6(target_pose_), pinocchio::log6(new_target_pose), params_.filter.target_pose));
+  desired_position_ =
+    exponential_moving_average(desired_position_, target_position_, params_.filter.target_pose);
+  desired_orientation_ =
+    target_orientation_.slerp(params_.filter.target_pose, desired_orientation_);
 
   /*target_pose_ = pinocchio::SE3(target_orientation_.toRotationMatrix(),
    * target_position_);*/
@@ -107,13 +106,13 @@ CartesianController::update(const rclcpp::Time & time, const rclcpp::Duration & 
   // motions
   if (params_.use_local_jacobian) {
     error.head(3) = end_effector_pose.rotation().transpose() *
-      (target_pose_.translation() - end_effector_pose.translation());
+      (desired_position_ - end_effector_pose.translation());
     error.tail(3) =
-      pinocchio::log3(end_effector_pose.rotation().transpose() * target_pose_.rotation());
+      pinocchio::log3(end_effector_pose.rotation().transpose() * desired_orientation_);
   } else {
-    error.head(3) = target_pose_.translation() - end_effector_pose.translation();
+    error.head(3) = desired_position_ - end_effector_pose.translation();
     error.tail(3) =
-      pinocchio::log3(target_pose_.rotation() * end_effector_pose.rotation().transpose());
+      pinocchio::log3(desired_orientation_ * end_effector_pose.rotation().transpose());
   }
 
   if (params_.limit_error) {
@@ -209,7 +208,48 @@ CartesianController::update(const rclcpp::Time & time, const rclcpp::Duration & 
   params_ = params_listener_->get_params();
   setStiffnessAndDamping();
 
+  // TODO(placeholder): log_debug_info function has glitches which results in different number of
+  // data points logged same frequence. For instance, q, dq are logged with same frequency,
+  // but the number of data points can be different. Turning off the logging by assigning false
+  // to params_.log.enabled. This can be done in controllers yaml file.
   log_debug_info(time);
+
+  // TODO(placeholder): The following debug output is supposed to be wrapped within
+  // #ifndef NDEBUG
+  // ...
+  // #endif
+  // So that the debug build can enable the output. However, debug build causes significant
+  // performance drop in the controller which reults in "communication_constraint_violation" errors
+  // for Franka robot.
+
+  static int read_counter = 0;
+  // Change the number that `read_counter` doing mode operation with to control the output frequency
+  // 1 is for every cycle, 2 is for every other cycle, etc. Increase the number to reduce output
+  // frequency, to avoid causing "communication_constraint_violation" errors for Franka robot.
+  if (read_counter % 1 == 0) {
+    RCLCPP_INFO_STREAM(get_node()->get_logger(), "q: " << q.transpose());
+    RCLCPP_INFO_STREAM(get_node()->get_logger(), "dq: " << dq.transpose());
+    RCLCPP_INFO_STREAM(
+      get_node()->get_logger(),
+      "current eef:" << end_effector_pose.translation().transpose() << " "
+                     << end_effector_pose.rotation().eulerAngles(2, 1, 0).transpose() << " "
+                     << Eigen::Quaterniond(end_effector_pose.rotation()).coeffs().transpose());
+    RCLCPP_INFO_STREAM(
+      get_node()->get_logger(),
+      "desired eef:" << desired_position_.transpose() << " "
+                     << desired_orientation_.toRotationMatrix().eulerAngles(2, 1, 0).transpose()
+                     << " " << desired_orientation_.coeffs().transpose());
+
+    RCLCPP_INFO_STREAM(
+      get_node()->get_logger(),
+      "target eef:" << target_position_.transpose() << " "
+                    << target_orientation_.toRotationMatrix().eulerAngles(2, 1, 0).transpose()
+                    << " " << target_orientation_.coeffs().transpose());
+    RCLCPP_INFO_STREAM(get_node()->get_logger(), "error: " << error.transpose());
+    RCLCPP_INFO_STREAM(get_node()->get_logger(), "task tau: " << tau_task.transpose());
+    read_counter = 0;  // Optional: prevents overflow, but not necessary
+  }
+  read_counter++;
 
   return controller_interface::return_type::OK;
 }
@@ -389,7 +429,8 @@ CartesianController::on_configure(const rclcpp_lifecycle::State & /*previous_sta
   target_position_ = Eigen::Vector3d::Zero();
   target_orientation_ = Eigen::Quaterniond::Identity();
   target_wrench_ = Eigen::VectorXd::Zero(6);
-  target_pose_ = pinocchio::SE3::Identity();
+  desired_position_ = Eigen::Vector3d::Zero();
+  desired_orientation_ = Eigen::Quaterniond::Identity();
 
   // Initialize error vector
   error = Eigen::VectorXd::Zero(6);
@@ -468,7 +509,8 @@ CartesianController::on_activate(const rclcpp_lifecycle::State & /*previous_stat
 
   target_position_ = end_effector_pose.translation();
   target_orientation_ = Eigen::Quaterniond(end_effector_pose.rotation());
-  target_pose_ = pinocchio::SE3(target_orientation_.toRotationMatrix(), target_position_);
+  desired_position_ = target_position_;
+  desired_orientation_ = target_orientation_;
 
   RCLCPP_INFO(get_node()->get_logger(), "Controller activated.");
   return CallbackReturn::SUCCESS;
