@@ -143,8 +143,10 @@ private:
   Eigen::Quaterniond target_orientation_;
   /** @brief Target wrench in task space */
   Eigen::VectorXd target_wrench_;
-  /** @brief Combined target pose as SE3 transformation */
-  pinocchio::SE3 target_pose_;
+  /** @brief Desired target position in Cartesian space after applying filtering */
+  Eigen::Vector3d desired_position_;
+  /** @brief Desired target orientation as quaternion after applying filtering */
+  Eigen::Quaterniond desired_orientation_;
 
   /** @brief Parameter listener for dynamic parameter updates */
   std::shared_ptr<cartesian_impedance_controller::ParamListener> params_listener_;
