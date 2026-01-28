@@ -61,9 +61,8 @@ CartesianController::update(const rclcpp::Time & time, const rclcpp::Duration & 
     auto joint_id = model_.getJointId(joint_name);  // pinocchio joind id might be different
     auto joint = model_.joints[joint_id];
 
-    /*q[i] = exponential_moving_average(q[i], state_interfaces_[i].get_value(),*/
-    /*                                  params_.filter.q);*/
-    q[i] = state_interfaces_[i].get_value();
+    // Filtering joint position measurement 1 uses previous q, 0 uses new q from measurement.
+    q[i] = exponential_moving_average(q[i], state_interfaces_[i].get_value(), params_.filter.q);
     if (continous_joint_types.count(joint.shortname())) {  // Then we are handling a continous
                                                            // joint that is SO(2)
       q_pin[joint.idx_q()] = std::cos(q[i]);
@@ -129,11 +128,15 @@ CartesianController::update(const rclcpp::Time & time, const rclcpp::Duration & 
   Eigen::MatrixXd J_pinv(model_.nv, 6);
   J_pinv = pseudo_inverse(J, params_.nullspace.regularization);
   Eigen::MatrixXd Id_nv = Eigen::MatrixXd::Identity(model_.nv, model_.nv);
+  if (params_.nullspace.projector_type == "dynamic" || params_.use_operational_space) {
+    pinocchio::computeMinverse(model_, data_, q_pin);
+    data_.Minv.triangularView<Eigen::StrictlyLower>() =
+      data_.Minv.transpose().triangularView<Eigen::StrictlyLower>();
+    Mx_inv = J * data_.Minv * J.transpose();
+    Mx = pseudo_inverse(Mx_inv);
+  }
 
   if (params_.nullspace.projector_type == "dynamic") {
-    pinocchio::computeMinverse(model_, data_, q_pin);
-    auto Mx_inv = J * data_.Minv * J.transpose();
-    auto Mx = pseudo_inverse(Mx_inv);
     auto J_bar = data_.Minv * J.transpose() * Mx;
     nullspace_projection = Id_nv - J.transpose() * J_bar.transpose();
   } else if (params_.nullspace.projector_type == "kinematic") {
@@ -148,10 +151,6 @@ CartesianController::update(const rclcpp::Time & time, const rclcpp::Duration & 
   }
 
   if (params_.use_operational_space) {
-    pinocchio::computeMinverse(model_, data_, q_pin);
-    auto Mx_inv = J * data_.Minv * J.transpose();
-    auto Mx = pseudo_inverse(Mx_inv);
-
     tau_task << J.transpose() * Mx * (stiffness * error - damping * (J * dq));
   } else {
     tau_task << J.transpose() * (stiffness * error - damping * (J * dq));

@@ -4,7 +4,7 @@
     "interpolated eef": ["x", "y", "z", "yaw", "pitch", "roll","qx", "qy", "qz", "qw"],
     "desired eef": ["x", "y", "z", "yaw", "pitch", "roll", "qx", "qy", "qz", "qw"],
     "target eef": ["x", "y", "z", "yaw", "pitch", "roll", "qx", "qy", "qz", "qw"],
-    "error": ["x", "y", "z", "omega_x", "omega_y", "omega_z"],
+    "error": ["x", "y", "z", "yaw", "pitch", "roll"],
     "unnormalized new_angular": ["omega_x", "omega_y", "omega_z"],
     "unnormalized filtered_angular": ["omega_x", "omega_y", "omega_z"],
     "normalized new_angular": ["omega_x", "omega_y", "omega_z"],
