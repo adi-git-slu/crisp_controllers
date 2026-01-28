@@ -242,6 +242,11 @@ private:
   /** @brief Final desired torque command */
   Eigen::VectorXd tau_d;
 
+  /** @brief Inverse of the manipulator joint mass projected in Cartesian space (6x6) */
+  Eigen::Matrix<double, 6, 6> Mx_inv = Eigen::Matrix<double, 6, 6>::Zero();
+  /** @brief the manipulator joint mass projected in Cartesian space (6x6) */
+  Eigen::Matrix<double, 6, 6> Mx = Eigen::Matrix<double, 6, 6>::Zero();
+
   /**
    * @brief Log debug information based on parameter settings
    * @param time Current time for throttling logs
