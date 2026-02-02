@@ -16,7 +16,7 @@
 
 #include <pinocchio/algorithm/aba.hpp>
 #include <pinocchio/algorithm/compute-all-terms.hpp>
-#include <pinocchio/algorithm/frames.hxx>
+#include <pinocchio/algorithm/frames.hpp>
 #include <pinocchio/algorithm/rnea.hpp>
 #include <pinocchio/multibody/fwd.hpp>
 #include <pinocchio/parsers/urdf.hpp>
@@ -61,6 +61,8 @@ CartesianController::update(const rclcpp::Time & time, const rclcpp::Duration & 
     auto joint_id = model_.getJointId(joint_name);  // pinocchio joind id might be different
     auto joint = model_.joints[joint_id];
 
+    q_ref[i] = exponential_moving_average(q_ref[i], q_target[i], params_.filter.q_ref);
+
     // Filtering joint position measurement 1 uses previous q, 0 uses new q from measurement.
     q[i] = exponential_moving_average(q[i], state_interfaces_[i].get_value(), params_.filter.q);
     if (continous_joint_types.count(joint.shortname())) {  // Then we are handling a continous
@@ -70,10 +72,8 @@ CartesianController::update(const rclcpp::Time & time, const rclcpp::Duration & 
     } else {  // simple revolute joint case
       q_pin[joint.idx_q()] = q[i];
     }
-    /*dq[i] = exponential_moving_average(*/
-    /*    dq[i], state_interfaces_[num_joints + i].get_value(),*/
-    /*    params_.filter.dq);*/
-    dq[i] = state_interfaces_[num_joints + i].get_value();
+    dq[i] = exponential_moving_average(
+      dq[i], state_interfaces_[num_joints + i].get_value(), params_.filter.dq);
   }
 
   if (new_target_pose_) {
@@ -227,6 +227,8 @@ CartesianController::update(const rclcpp::Time & time, const rclcpp::Duration & 
   // frequency, to avoid causing "communication_constraint_violation" errors for Franka robot.
   if (read_counter % 1 == 0) {
     RCLCPP_INFO_STREAM(get_node()->get_logger(), "q: " << q.transpose());
+    RCLCPP_INFO_STREAM(get_node()->get_logger(), "q target: " << q_target.transpose());
+    RCLCPP_INFO_STREAM(get_node()->get_logger(), "q ref: " << q_ref.transpose());
     RCLCPP_INFO_STREAM(get_node()->get_logger(), "dq: " << dq.transpose());
     RCLCPP_INFO_STREAM(
       get_node()->get_logger(),
@@ -246,6 +248,7 @@ CartesianController::update(const rclcpp::Time & time, const rclcpp::Duration & 
                     << " " << target_orientation_.coeffs().transpose());
     RCLCPP_INFO_STREAM(get_node()->get_logger(), "error: " << error.transpose());
     RCLCPP_INFO_STREAM(get_node()->get_logger(), "task tau: " << tau_task.transpose());
+    RCLCPP_INFO_STREAM(get_node()->get_logger(), "nullspace tau: " << tau_nullspace.transpose());
     read_counter = 0;  // Optional: prevents overflow, but not necessary
   }
   read_counter++;
@@ -341,6 +344,7 @@ CartesianController::on_configure(const rclcpp_lifecycle::State & /*previous_sta
   q_pin = Eigen::VectorXd::Zero(model_.nq);
   dq = Eigen::VectorXd::Zero(model_.nv);
   q_ref = Eigen::VectorXd::Zero(model_.nv);
+  q_target = Eigen::VectorXd::Zero(model_.nv);
   dq_ref = Eigen::VectorXd::Zero(model_.nv);
   tau_previous = Eigen::VectorXd::Zero(model_.nv);
   J = Eigen::MatrixXd::Zero(6, model_.nv);
@@ -496,6 +500,7 @@ CartesianController::on_activate(const rclcpp_lifecycle::State & /*previous_stat
     }
 
     q_ref[i] = state_interfaces_[i].get_value();
+    q_target[i] = q_ref[i];
 
     dq[i] = state_interfaces_[num_joints + i].get_value();
     dq_ref[i] = state_interfaces_[num_joints + i].get_value();
@@ -534,7 +539,7 @@ void CartesianController::parse_target_joint_() {
   auto msg = *target_joint_buffer_.readFromRT();
   if (msg->position.size()) {
     for (size_t i = 0; i < msg->position.size(); ++i) {
-      q_ref[i] = msg->position[i];
+      q_target[i] = msg->position[i];
     }
     /*filterJointValues(msg->name, msg->position, params_.joints, q_ref);*/
   }
