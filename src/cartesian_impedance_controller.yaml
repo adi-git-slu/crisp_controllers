@@ -240,6 +240,12 @@ cartesian_impedance_controller:
       description: "Amount of smoothing for the target pose when using the EMA."
       validation:
         bounds<>: [0.0, 1.0]
+    q_ref:
+      type: double
+      default_value: 1.0
+      description: "Amount of smoothing for the target joint when using the EMA."
+      validation:
+        bounds<>: [0.0, 1.0]
 
     output_torque:
       type: double

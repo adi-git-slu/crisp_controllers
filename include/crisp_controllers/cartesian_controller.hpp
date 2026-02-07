@@ -184,6 +184,8 @@ private:
   Eigen::VectorXd q_ref;
   /** @brief Reference joint velocities */
   Eigen::VectorXd dq_ref;
+  /** @brief Target joint positions for posture task */
+  Eigen::VectorXd q_target;
 
   /** @brief Previously computed torque */
   Eigen::VectorXd tau_previous;

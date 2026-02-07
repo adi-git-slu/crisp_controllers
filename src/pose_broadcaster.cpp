@@ -9,7 +9,7 @@
 #include <crisp_controllers/pose_broadcaster.hpp>
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
-#include <pinocchio/algorithm/frames.hxx>
+#include <pinocchio/algorithm/frames.hpp>
 #include <pinocchio/algorithm/kinematics.hpp>
 #include <pinocchio/algorithm/model.hpp>
 #include <pinocchio/parsers/urdf.hpp>
