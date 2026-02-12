@@ -1,4 +1,3 @@
-// "Copyright [2026] <Analog Devices, Inc.>"
 #pragma once
 
 #include <Eigen/Dense>  // NOLINT(build/include_order)

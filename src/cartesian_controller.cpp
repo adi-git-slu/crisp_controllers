@@ -1,4 +1,3 @@
-// Copyright [2026] <Analog Devices, Inc.>
 #include <fmt/format.h>
 #include <cmath>
 #include <cstddef>

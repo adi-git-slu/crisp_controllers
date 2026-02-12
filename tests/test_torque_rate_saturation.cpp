@@ -1,5 +1,3 @@
-// "Copyright [2026] <Analog Devices, Inc.>"
-
 #include <gtest/gtest.h>
 #include "crisp_controllers/utils/torque_rate_saturation.hpp"
 

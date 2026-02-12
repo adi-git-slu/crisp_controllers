@@ -1,4 +1,3 @@
-// "Copyright [2026] <Analog Devices, Inc.>"
 #pragma once
 // Based in
 // https://github.com/marcocognetti/FrankaEmikaPandaDynModel/tree/master

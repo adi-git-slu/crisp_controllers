@@ -1,5 +1,3 @@
-// "Copyright [2026] <Analog Devices, Inc.>"
-
 #include <gtest/gtest.h>
 #include <stdexcept>
 #include "crisp_controllers/utils/fiters.hpp"
