@@ -1,5 +1,3 @@
-// "Copyright [2026] <Analog Devices, Inc.>"
-
 #include <binders.h>
 #include <cassert>
 #include <cmath>

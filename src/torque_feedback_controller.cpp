@@ -1,5 +1,3 @@
-// "Copyright [2026] <Analog Devices, Inc.>"
-
 #include <cmath>
 #include <memory>
 #include <set>
